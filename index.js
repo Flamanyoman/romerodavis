@@ -1,10 +1,11 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import cors from 'cors';
+import path from 'path';
 import pagesRouter from './routes/pageRoutes/controller.js';
 import authRouter from './routes/authRoutes/controller.js';
 import purchaseRouter from './routes/purchaseRoutes/controller.js';
-import cors from 'cors';
 
 // initializing express
 const app = express();
@@ -18,7 +19,7 @@ const dburi = process.env.dbURI;
 
 // connect mongoose and initialize express listen
 mongoose
-  .connect(dburi)
+  .connect(dburi, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => {
     app.listen(port, () => {
       console.log(`Server is listening on port ${port}`);
@@ -33,7 +34,7 @@ app.use(express.json());
 // Use CORS middleware
 app.use(
   cors({
-    origin: 'http://localhost:5173',
+    origin: true, // Reflects the origin of the request
   })
 );
 
@@ -41,6 +42,14 @@ app.use(
 app.use('/api', authRouter);
 app.use('/api', pagesRouter);
 app.use('/api', purchaseRouter);
+
+// Serve static files from the 'dist' directory
+app.use(express.static('dist'));
+
+// Handle client-side routing, return index.html for all non-API routes
+app.get('*', (req, res) => {
+  res.sendFile(path.resolve('dist', 'index.html'));
+});
 
 // error handler middleware
 const errorHandler = (err, req, res, next) => {
@@ -54,3 +63,5 @@ const errorHandler = (err, req, res, next) => {
 };
 
 app.use(errorHandler);
+
+export default app;

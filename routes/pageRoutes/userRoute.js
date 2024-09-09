@@ -24,7 +24,7 @@ const userRoute = async (req, res, next) => {
       })
       .populate({
         path: 'wallet.withDrawn.refs',
-        select: 'amount createdAt',
+        select: 'amount createdAt approved',
       })
       .exec();
 
@@ -60,7 +60,6 @@ const userRoute = async (req, res, next) => {
       },
     });
   } catch (err) {
-    console.error(err);
     next(err); // Pass any errors to the error handling middleware
   }
 };

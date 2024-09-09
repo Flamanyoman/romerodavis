@@ -2,7 +2,7 @@ import User from '../../models/user.js';
 import Transaction from '../../models/transaction.js';
 
 const withdrawFunds = async (req, res, next) => {
-  const { userId, amount, investmentId } = req.body;
+  const { userId, amount, sentBankName, bankName, accountNum } = req.body;
 
   try {
     // Validate required fields
@@ -11,20 +11,34 @@ const withdrawFunds = async (req, res, next) => {
     }
 
     // Find the user by ID
-    const user = await User.findById(userId).exec();
+    const user = await User.findById(userId)
+      .populate({
+        path: 'wallet.invested.refs',
+        select: 'totalIncome',
+      })
+      .populate({
+        path: 'wallet.withDrawn.refs',
+        select: 'amount',
+      })
+      .exec();
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Calculate non-invested funds
-    const nonInvestedFunds =
-      user.wallet.recharged.balance -
-      user.wallet.invested.balance -
-      user.wallet.withDrawn.balance;
+    // Calculate total income from investments
+    const incomeArray =
+      user.wallet.invested?.refs?.map((ref) => Number(ref.totalIncome) || 0) ||
+      [];
+    const totalIncome = incomeArray.reduce((sum, income) => sum + income, 0);
 
-    if (amount <= nonInvestedFunds && !investmentId) {
-      // Withdraw from non-invested funds
+    // Calculate the final amount available for withdrawal
+    const finalAmount =
+      totalIncome +
+      (user.wallet.income?.balance || 0) -
+      (user.wallet.withDrawn?.balance || 0);
 
+    if (amount <= finalAmount) {
       // Create a new withdrawal transaction
       const withdrawalTransaction = new Transaction({
         mode: 'WAND',
@@ -39,59 +53,17 @@ const withdrawFunds = async (req, res, next) => {
 
       await withdrawalTransaction.save();
 
+      // Update user wallet and account details
       user.wallet.withDrawn.refs.push(withdrawalTransaction._id);
-      user.wallet.withDrawn.balance += amount;
+      user.wallet.withDrawn.balance += parseFloat(amount);
+      user.accountDetails.bank = sentBankName;
+      user.accountDetails.accountName = bankName;
+      user.accountDetails.accountNum = accountNum;
 
-      await user.save();
-
-      return res.status(200).json({
-        message: 'Withdrawal successful',
-        transaction: withdrawalTransaction,
-      });
-    } else if (investmentId) {
-      // Attempt to withdraw from matured investments
-      const investment = await Transaction.findOne({
-        _id: investmentId,
-        buyer: user._id,
-        matured: true,
-        withdrawn: false,
-        totalIncome: { $gt: 0 },
-      });
-
-      if (!investment) {
-        return res
-          .status(400)
-          .json({ message: 'Investment not found or not matured' });
+      try {
+        await user.save();
+      } catch (err) {
       }
-
-      // Check if the requested amount is less than or equal to the investment's total income
-      if (amount > investment.totalIncome) {
-        return res
-          .status(400)
-          .json({ message: 'Requested amount exceeds investment balance' });
-      }
-
-      // Update the investment's withdrawn amount
-      investment.withdrawn = true; // or update the specific withdrawn field if needed
-      await investment.save();
-
-      // Create a new withdrawal transaction
-      const withdrawalTransaction = new Transaction({
-        mode: 'WAND',
-        name: 'Withdraw Funds',
-        amount: parseFloat(amount),
-        Daily: 0,
-        dailyIncome: 0,
-        totalIncome: 0,
-        maturity: 0,
-        buyer: user._id,
-      });
-
-      await withdrawalTransaction.save();
-
-      user.wallet.withDrawn.refs.push(withdrawalTransaction._id);
-      user.wallet.withDrawn.balance += amount;
-      await user.save();
 
       return res.status(200).json({
         message: 'Withdrawal successful',

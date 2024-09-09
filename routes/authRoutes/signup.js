@@ -93,7 +93,6 @@ const signup = async (req, res, next) => {
       },
     });
   } catch (err) {
-    console.log(err);
     // Handle errors and pass them to the error handling middleware
     if (!res.headersSent) {
       next(err);

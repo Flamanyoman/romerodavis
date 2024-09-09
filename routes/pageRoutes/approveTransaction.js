@@ -31,7 +31,6 @@ export const toggleTransactionApproval = async (req, res) => {
     // Perform actions based on the approval status
     if (transaction.approved) {
       // Logic for when the transaction is approved
-      console.log(`Transaction ${transactionId} approved.`);
       // Example: update user balance, notify user, etc.
       const buyer = await User.findById(transaction.buyer);
       buyer.wallet.recharged.balance += transaction.amount;
@@ -40,8 +39,6 @@ export const toggleTransactionApproval = async (req, res) => {
       // Additional logic like sending a notification to the user can be added here
     } else {
       // Logic for when the transaction approval is reversed
-      console.log(`Transaction ${transactionId} approval reversed.`);
-      // Example: revert user balance, notify user, etc.
       const buyer = await User.findById(transaction.buyer);
       buyer.wallet.recharged.balance -= transaction.amount;
       await buyer.save();
@@ -54,7 +51,6 @@ export const toggleTransactionApproval = async (req, res) => {
     // Return the updated transaction
     return res.status(200).json({ transaction });
   } catch (error) {
-    console.error('Error toggling transaction approval:', error);
     return res.status(500).json({ message: 'Server error' });
   }
 };
@@ -66,7 +62,6 @@ export const approveTransactions = async (req, res) => {
 
     // Find the user by userId
     const user = await User.findById(userId);
-
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -76,15 +71,19 @@ export const approveTransactions = async (req, res) => {
       return res.status(403).json({ message: 'Leave this page' });
     }
 
-    // Fetch transactions with pagination
+    // Fetch and populate transactions based on conditions
     const transactions = await Transaction.find({
       mode: { $in: ['WAND', 'RAND'] },
     })
       .select('amount approved accountName createdAt buyer mode')
       .sort({ createdAt: -1 })
-      .skip(skip) // Skip the previous batch
-      .limit(limit) // Limit to the specified number of items
-      .populate('buyer', 'phoneNum');
+      .skip(skip)
+      .limit(limit)
+      .populate({
+        path: 'buyer',
+        select: 'phoneNum accountDetails',
+      });
+
 
     // Count total matching transactions
     const totalCount = await Transaction.countDocuments({
@@ -100,7 +99,8 @@ export const approveTransactions = async (req, res) => {
       hasMore,
     });
   } catch (error) {
-    console.error('Error fetching transactions:', error);
-    return res.status(500).json({ message: 'Server error' });
+    return res
+      .status(500)
+      .json({ message: 'Server error', error: error.message });
   }
 };

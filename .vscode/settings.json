@@ -1,0 +1,8 @@
+{
+    "appService.zipIgnorePattern": [
+        "node_modules{,/**}",
+        ".vscode{,/**}"
+    ],
+    "appService.defaultWebAppToDeploy": "/subscriptions/4ca281ad-e0b0-40e7-8c55-b58ea6862535/resourceGroups/romerodavis_group/providers/Microsoft.Web/sites/romerodavis",
+    "appService.deploySubpath": "."
+}
