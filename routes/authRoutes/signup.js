@@ -40,6 +40,8 @@ const signup = async (req, res, next) => {
       newUser.referedBy = referringUserId;
     }
 
+    newUser.wallet.income.balance += 200;
+
     // Save the new user
     await newUser.save();
 

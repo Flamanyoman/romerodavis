@@ -6,6 +6,7 @@ import schedule from 'node-schedule';
 import moment from 'moment';
 import Transaction from '../../models/transaction.js';
 import { banks, verifyBank } from './banks.js';
+import { claimReward, team } from './rewards.js';
 
 const purchaseRouter = express.Router();
 
@@ -21,6 +22,10 @@ purchaseRouter.post('/withdraw', withdrawFunds);
 purchaseRouter.get('/banks', banks);
 
 purchaseRouter.post('/verify-bank', verifyBank);
+
+purchaseRouter.get('/team', team);
+
+purchaseRouter.post('/claimReward', claimReward);
 
 // Schedule job to run every minute
 schedule.scheduleJob('0 0 * * *', async () => {
