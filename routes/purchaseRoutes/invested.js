@@ -1,6 +1,7 @@
 import { perfData } from './data.js';
 import User from '../../models/user.js';
 import Transaction from '../../models/transaction.js';
+import withdrawFunds from './withdrawn.js';
 
 const investedItem = async (req, res, next) => {
   const { mode, userId } = req.body;
@@ -25,10 +26,9 @@ const investedItem = async (req, res, next) => {
 
     // Calculate the total available balance
     const totalBalance =
-      user.wallet.recharged.balance +
-      user.wallet.income.balance -
-      user.wallet.withDrawn.balance -
-      user.wallet.invested.balance;
+      parseFloat(user.wallet.recharged.balance) +
+      parseFloat(user.wallet.income.balance) -
+      parseFloat(user.wallet.invested.balance);
 
     // Convert item amount to a number
     const itemAmount = parseFloat(item.amount.replace(/,/g, ''));

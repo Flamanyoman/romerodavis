@@ -19,7 +19,12 @@ export const toggleTransactionApproval = async (req, res) => {
     }
 
     // Find the transaction by transactionId
-    const transaction = await Transaction.findById(transactionId);
+    const transaction = await Transaction.findById(transactionId)
+      .select('amount approved accountName createdAt buyer mode')
+      .populate({
+        path: 'buyer',
+        select: 'phoneNum accountDetails',
+      });
 
     if (!transaction) {
       return res.status(404).json({ message: 'Transaction not found' });
@@ -83,7 +88,6 @@ export const approveTransactions = async (req, res) => {
         path: 'buyer',
         select: 'phoneNum accountDetails',
       });
-
 
     // Count total matching transactions
     const totalCount = await Transaction.countDocuments({
