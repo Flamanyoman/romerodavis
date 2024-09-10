@@ -1,7 +1,7 @@
-import { perfData } from './data.js';
+import mongoose from 'mongoose';
 import User from '../../models/user.js';
 import Transaction from '../../models/transaction.js';
-import withdrawFunds from './withdrawn.js';
+import { perfData } from './data.js';
 
 const investedItem = async (req, res, next) => {
   const { mode, userId } = req.body;
@@ -40,9 +40,37 @@ const investedItem = async (req, res, next) => {
     if (totalBalance < itemAmount) {
       return res
         .status(400)
-        .json({ message: 'Insufficient funds, Please Recharge' });
+        .json({ message: `You have ₦${totalBalance}, Please Recharge` });
     }
 
+    // Handle referral bonus logic
+    if (user.referedBy) {
+      // If the user has a referrer, fetch the referrer's details
+      const referrer = await User.findById(user.referedBy).populate('referals');
+
+      if (referrer) {
+        const referredRefsCount = referrer.referals.length;
+        let bonusPercentage = 0;
+
+        // Determine the bonus based on the number of referrals
+        if (referredRefsCount === 1) {
+          bonusPercentage = 20;
+        } else if (referredRefsCount === 2) {
+          bonusPercentage = 5;
+        } else if (referredRefsCount === 3) {
+          bonusPercentage = 1;
+        }
+
+        // Calculate the bonus and update referrer's wallet.income.balance
+        if (bonusPercentage > 0) {
+          const bonusAmount = (itemAmount * bonusPercentage) / 100;
+          referrer.wallet.income.balance += bonusAmount;
+          await referrer.save();
+        }
+      }
+    }
+
+    // Proceed with the original investment process
     const totalIncome = 0;
 
     // Create a new transaction
