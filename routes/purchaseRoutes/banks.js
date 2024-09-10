@@ -24,25 +24,28 @@ export const banks = async (req, res) => {
 
 export const verifyBank = async (req, res) => {
   const { accountNumber, bank } = req.body;
-  const secret_key = process.env.PAYSTACK_SECRET;
+
+  console.log(accountNumber, bank);
 
   try {
     const response = await axios.get(
-      `https://api.paystack.co/bank/resolve?account_number=${accountNumber}&bank_code=${bank}`,
+      `https://nubapi.com/api/verify?account_number=${accountNumber}&bank_code=${bank}`,
       {
         headers: {
-          Authorization: `Bearer ${secret_key}`,
+          Authorization:
+            'Bearer 8M5iLxT5BVg305GyxkwBCctA7flKgRfqaSgKSPiUd1a74d3e',
           'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache',
         },
       }
     );
 
     res.status(200).json(response.data);
+    console.log(response.data);
   } catch (error) {
     res.status(500).json({
       message: 'Error verifying bank details',
       error: error.response?.data || error.message,
     });
+    console.log(error);
   }
 };
