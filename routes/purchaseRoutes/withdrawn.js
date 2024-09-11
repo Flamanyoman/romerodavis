@@ -4,6 +4,10 @@ import Transaction from '../../models/transaction.js';
 const withdrawFunds = async (req, res, next) => {
   const { userId, amount, sentBankName, bankName, accountNum } = req.body;
 
+  const percentAmount = (amount) => {
+    return (95 / 100) * amount;
+  };
+
   try {
     // Validate required fields
     if (!userId || !amount || isNaN(amount)) {
@@ -43,7 +47,7 @@ const withdrawFunds = async (req, res, next) => {
       const withdrawalTransaction = new Transaction({
         mode: 'WAND',
         name: 'Withdraw',
-        amount: parseFloat(amount),
+        amount: parseFloat(percentAmount(amount)),
         Daily: 0,
         dailyIncome: 0,
         totalIncome: 0,
@@ -55,15 +59,14 @@ const withdrawFunds = async (req, res, next) => {
 
       // Update user wallet and account details
       user.wallet.withDrawn.refs.push(withdrawalTransaction._id);
-      user.wallet.withDrawn.balance += parseFloat(amount);
+      user.wallet.withDrawn.balance += parseFloat(percentAmount(amount));
       user.accountDetails.bank = sentBankName;
       user.accountDetails.accountName = bankName;
       user.accountDetails.accountNum = accountNum;
 
       try {
         await user.save();
-      } catch (err) {
-      }
+      } catch (err) {}
 
       return res.status(200).json({
         message: 'Withdrawal successful',
