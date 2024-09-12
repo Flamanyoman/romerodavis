@@ -1,79 +1,65 @@
-import mongoose from 'mongoose';
-import User from '../../models/user.js';
 import Transaction from '../../models/transaction.js';
+import User from '../../models/user.js';
 import { perfData } from './data.js';
 
 const investedItem = async (req, res, next) => {
   const { mode, userId } = req.body;
 
   try {
-    // Validate required fields
     if (!mode || !userId) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    // Find the item in perfData
     const item = perfData.find((p) => p.mode === mode);
     if (!item) {
       return res.status(404).json({ message: 'Item not found' });
     }
 
-    // Find the user by ID
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Calculate the total available balance
     const totalBalance =
       parseFloat(user.wallet.recharged.balance) +
       parseFloat(user.wallet.income.balance) -
       parseFloat(user.wallet.invested.balance);
 
-    // Convert item amount to a number
     const itemAmount = parseFloat(item.amount.replace(/,/g, ''));
     if (isNaN(itemAmount)) {
       return res.status(400).json({ message: 'Invalid amount format' });
     }
 
-    // Check if the total balance is sufficient for the purchase
     if (totalBalance < itemAmount) {
       return res
         .status(400)
         .json({ message: `You have ₦${totalBalance}, Please Recharge` });
     }
 
-    // Handle referral bonus logic
-    if (user.referedBy) {
-      // If the user has a referrer, fetch the referrer's details
-      const referrer = await User.findById(user.referedBy).populate('referals');
+    // Handle multi-level referral bonus logic
+    let currentUser = user;
+    let bonusPercentages = [15, 5, 1]; // Corresponds to each level
+
+    while (currentUser.referedBy && bonusPercentages.length > 0) {
+      const referrer = await User.findById(currentUser.referedBy);
 
       if (referrer) {
-        const referredRefsCount = referrer.referals.length;
-        let bonusPercentage = 0;
+        const bonusPercentage = bonusPercentages.shift(); // Get the top bonus percentage
+        const bonusAmount = (itemAmount * bonusPercentage) / 100;
 
-        // Determine the bonus based on the number of referrals
-        if (referredRefsCount === 1) {
-          bonusPercentage = 20;
-        } else if (referredRefsCount === 2) {
-          bonusPercentage = 5;
-        } else if (referredRefsCount === 3) {
-          bonusPercentage = 1;
-        }
+        referrer.wallet.income.balance += bonusAmount;
+        await referrer.save();
 
-        // Calculate the bonus and update referrer's wallet.income.balance
-        if (bonusPercentage > 0) {
-          const bonusAmount = (itemAmount * bonusPercentage) / 100;
-          referrer.wallet.income.balance += bonusAmount;
-          await referrer.save();
-        }
+        // Move up the chain
+        currentUser = referrer;
+      } else {
+        break; // No more referrers
       }
     }
 
     // Proceed with the original investment process
     const totalIncome = 0;
 
-    // Create a new transaction
     const transaction = new Transaction({
       mode: item.mode,
       name: item.name,
@@ -84,21 +70,18 @@ const investedItem = async (req, res, next) => {
       buyer: user._id,
     });
 
-    // Save the transaction
     const savedTransaction = await transaction.save();
 
-    // Update the user's wallet
     user.wallet.invested.refs.push(savedTransaction._id);
     user.wallet.invested.balance += itemAmount;
     await user.save();
 
-    // Send a success response
     res.status(200).json({
       message: 'Purchase successful',
       transaction: savedTransaction,
     });
   } catch (err) {
-    next(err); // Pass any errors to the error handling middleware
+    next(err);
   }
 };
 

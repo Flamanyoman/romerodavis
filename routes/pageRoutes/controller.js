@@ -6,6 +6,7 @@ import {
 } from './approveTransaction.js';
 import { investmentRoute } from './investmentRoute.js';
 import { getReferredUsers } from './referedUsers.js';
+import getUserDetails from './userDetails.js';
 
 const pagesRouter = express.Router();
 
@@ -15,5 +16,6 @@ pagesRouter.post('/transactionsInfo', approveTransactions);
 pagesRouter.post('/toggleApproval', toggleTransactionApproval);
 pagesRouter.post('/allInvestments', investmentRoute);
 pagesRouter.get('/referedusers', getReferredUsers);
+pagesRouter.get('/userdetails', getUserDetails);
 
 export default pagesRouter;
