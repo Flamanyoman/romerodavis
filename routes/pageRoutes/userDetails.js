@@ -2,10 +2,11 @@ import User from '../../models/user.js';
 
 const getUserDetails = async (req, res, next) => {
   const { phoneNum } = req.query;
+  console.log(phoneNum);
 
   try {
     const user = await User.aggregate([
-      { $match: { phoneNum: phoneNum } }, // Match the user by phoneNum
+      { $match: { phoneNum: parseFloat(phoneNum) } }, // Match the user by phoneNum
       {
         $lookup: {
           from: 'users', // Referrer collection
@@ -62,8 +63,20 @@ const getUserDetails = async (req, res, next) => {
       },
       {
         $project: {
-          referredBy: { $arrayElemAt: ['$referredBy.phoneNum', 0] },
-          referals: '$referals.phoneNum',
+          referredBy: {
+            $cond: {
+              if: { $isArray: '$referredBy' },
+              then: { $arrayElemAt: ['$referredBy.phoneNum', 0] },
+              else: '$referredBy.phoneNum',
+            },
+          },
+          referals: {
+            $cond: {
+              if: { $isArray: '$referals' },
+              then: '$referals.phoneNum',
+              else: [],
+            },
+          },
           accountDetails: '$accountDetails.accountName',
           'wallet.income.balance': 1,
           'wallet.recharged.balance': 1,
@@ -93,9 +106,10 @@ const getUserDetails = async (req, res, next) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    res.status(200).json(user[0]);
+    res.status(200).json(user);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
+    console.log(err);
   }
 };
 

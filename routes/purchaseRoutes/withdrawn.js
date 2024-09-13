@@ -30,10 +30,6 @@ const withdrawFunds = async (req, res, next) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    
-    if (user) {
-      return res.status(404).json({ message: 'System maintanance' });
-    }
     // Calculate total income from investments
     const incomeArray =
       user.wallet.invested?.refs?.map((ref) => Number(ref.totalIncome) || 0) ||
